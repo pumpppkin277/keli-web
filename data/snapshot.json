@@ -1,1 +1,1 @@
-{"cities":{"310000":{"rated":824,"total":2886},"520100":{"rated":65,"total":1047},"532800":{"rated":15,"total":315}}}
+{"cities":{"310000":{"deep_audited":209,"environment_scored":613,"evidence_insufficient":2,"pending":2062,"rated":824,"total":2886},"520100":{"deep_audited":65,"environment_scored":0,"evidence_insufficient":0,"pending":982,"rated":65,"total":1047},"532800":{"deep_audited":1,"environment_scored":0,"evidence_insufficient":19,"pending":295,"rated":20,"total":315}},"generated_at":"2026-08-08T01:03:47.439156+00:00"}

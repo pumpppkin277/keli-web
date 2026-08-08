@@ -1257,7 +1257,7 @@
             </div>
             <div class="profile-section">
                 <div class="profile-section-title">数据说明</div>
-                <div class="profile-note">“环境初评”基于周边地图 POI 形成第一层风险分布；“待补充”表示酒店已收录但还没有形成安全分。当前结果用于辅助筛选，不替代入住前的现场判断。</div>
+                <div class="profile-note">“环境初评”基于周边地图 POI 形成第一层风险分布；“已深审 · 公开证据不足”表示已完成公开信息检索，但证据不足以形成正式判断；“待补充”表示酒店已收录但还没有形成安全分。当前结果用于辅助筛选，不替代入住前的现场判断。</div>
             </div>
         </div>
     </div>
@@ -1512,6 +1512,14 @@
             if (bucket === 'safe') return '初步相对安全';
             if (bucket === 'attention') return '初步需留意';
             if (bucket === 'risk') return '初步高风险';
+            return '待补充';
+        }
+
+        function auditStatusLabel(hotel) {
+            const status = String(hotel?.audit_status || 'pending');
+            if (status === 'deep_audited') return '已完成深度审计';
+            if (status === 'evidence_insufficient') return '已深审 · 公开证据不足';
+            if (status === 'environment_scored') return '环境初评';
             return '待补充';
         }
 
@@ -2223,6 +2231,7 @@
                     </div>
                     <div>
                         <div class="risk-pill">${htmlEscape(riskLabel)}</div>
+                        <div class="detail-meta">数据阶段：${htmlEscape(auditStatusLabel(hotel))}</div>
                         <div class="detail-meta">更新时间：${htmlEscape(formatDate(hotel.updated_at))}</div>
                         ${tags.length ? `<div class="hotel-tags" style="margin-top:10px;">${tags.map(tag => `<span class="hotel-tag">${htmlEscape(tag)}</span>`).join('')}</div>` : ''}
                     </div>

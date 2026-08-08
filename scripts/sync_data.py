@@ -8,6 +8,7 @@ import os
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -59,7 +60,20 @@ def main() -> None:
         write_json(DATA_DIR / f"hotels-{city_code}.json", hotels)
         city_rated_ids = {int(hotel["id"]) for hotel in hotels if hotel.get("safety_score") is not None}
         rated_ids.update(city_rated_ids)
-        counts[city_code] = {"total": len(hotels), "rated": len(city_rated_ids)}
+        status_counts = {
+            "environment_scored": 0,
+            "deep_audited": 0,
+            "evidence_insufficient": 0,
+            "pending": 0,
+        }
+        for hotel in hotels:
+            status = str(hotel.get("audit_status") or "pending")
+            status_counts[status if status in status_counts else "pending"] += 1
+        counts[city_code] = {
+            "total": len(hotels),
+            "rated": len(city_rated_ids),
+            **status_counts,
+        }
 
     with ThreadPoolExecutor(max_workers=16) as executor:
         futures = [executor.submit(sync_detail, hotel_id) for hotel_id in sorted(rated_ids)]
@@ -70,7 +84,10 @@ def main() -> None:
         if int(existing.stem) not in rated_ids:
             existing.unlink()
 
-    write_json(DATA_DIR / "snapshot.json", {"cities": counts})
+    write_json(
+        DATA_DIR / "snapshot.json",
+        {"cities": counts, "generated_at": datetime.now(timezone.utc).isoformat()},
+    )
     print(json.dumps(counts, ensure_ascii=False, sort_keys=True))
 
 

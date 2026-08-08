@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>壳里 · 女性安全地图（公测）</title>
+    <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=JBXBZ-FOK3Z-D6QXJ-T2LZM-3CC7K-WQFAA"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #172033;
+        }
+
+        /* 开屏页 */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+
+        #splash-screen h1 {
+            color: white;
+            font-size: 32px;
+        }
+
+        /* 页面容器 */
+        .page {
+            display: none;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* 模态框 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.54);
+            backdrop-filter: blur(4px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 18px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-height: 90%;
+            min-height: 420px;
+            width: 90%;
+            max-width: 760px;
+            overflow-y: auto;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+        }
+
+        .modal-header {
+            padding: 28px 32px 22px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 0;
+        }
+
+        .modal-subtitle {
+            color: #64748b;
+            line-height: 1.6;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        /* 城市选择 */
+        .city-selection {
+            padding: 24px 32px 32px;
+        }
+
+        .country-section {
+            margin-bottom: 20px;
+        }
+
+        .country-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 14px;
+        }
+
+        .cities-container {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .city-button {
+            background: #f8fafc;
+            padding: 18px 18px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            border: 1px solid #e2e8f0;
+            color: #333;
+            min-height: 92px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .city-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 26px rgba(37, 99, 235, 0.13);
+            border-color: #2563eb;
+            background: #fff;
+        }
+
+        .city-button-text {
+            font-size: 21px;
+            font-weight: 750;
+            color: #1f2937;
+        }
+
+        .city-button-meta {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+
+        /* 地图页面 */
+        .map-page {
+            padding: 0;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        #map {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            width: 100%;
+            height: 100%;
+            background: #eef3f8;
+        }
+
+        .map-loading-mask {
+            position: absolute;
+            inset: 0;
+            z-index: 880;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(248, 250, 252, 0.66);
+            color: #334155;
+            font-size: 14px;
+            font-weight: 700;
+            pointer-events: none;
+        }
+
+        .map-loading-mask.active {
+            display: flex;
+        }
+
+        .map-provider-badge {
+            position: absolute;
+            right: 18px;
+            bottom: 166px;
+            z-index: 940;
+            background: rgba(255, 255, 255, 0.92);
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 7px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .map-top-bar {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            z-index: 2147483000;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .map-control-shell {
+            width: min(680px, calc(100vw - 32px));
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+            padding: 12px;
+            pointer-events: auto;
+            position: relative;
+            z-index: 2147483001;
+        }
+
+        .map-control-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .current-city-label {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .map-count-label {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .map-search-row {
+            display: grid;
+            grid-template-columns: minmax(160px, 1fr) 156px;
+            gap: 8px;
+        }
+
+        .map-search-input,
+        .map-sort-select {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            border-radius: 8px;
+            height: 42px;
+            padding: 0 12px;
+            color: #1f2937;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .map-search-input:focus,
+        .map-sort-select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-top: 10px;
+            pointer-events: auto;
+            position: relative;
+            z-index: 2147483002;
+        }
+
+        .filter-row::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-chip {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #334155;
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+            touch-action: manipulation;
+            transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+            position: relative;
+            z-index: 2147483003;
+        }
+
+        .filter-chip:hover {
+            border-color: #2563eb;
+            color: #1d4ed8;
+        }
+
+        .filter-chip.active {
+            background: #172033;
+            border-color: #172033;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .map-legend {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .switch-city-btn {
+            background: #2563eb;
+            color: white;
+            padding: 12px 16px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            pointer-events: auto;
+            white-space: nowrap;
+        }
+
+        .switch-city-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+
+        .top-action-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+            pointer-events: auto;
+        }
+
+        .profile-entry-btn {
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            background: rgba(255, 255, 255, 0.94);
+            color: #172033;
+            padding: 11px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+            font-size: 14px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .profile-entry-btn:hover {
+            border-color: #2563eb;
+            color: #1d4ed8;
+        }
+
+        /* 酒店标记弹窗 */
+        .hotel-popup {
+            width: min(520px, calc(100vw - 96px));
+            max-width: 520px;
+            min-width: 220px;
+        }
+
+        .hotel-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .hotel-info {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .hotel-score {
+            font-size: 14px;
+            color: #6366f1;
+            font-weight: 600;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .hotel-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .hotel-tag {
+            background: #eef2ff;
+            color: #4338ca;
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 12px;
+            max-width: 100%;
+            white-space: normal;
+        }
+
+        .popup-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #4f46e5;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 138px;
+            z-index: 900;
+            background: white;
+            border-radius: 12px;
+            padding: 14px 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            color: #555;
+            display: none;
+        }
+
+        .empty-state.active {
+            display: block;
+        }
+
+        .hotel-list-panel {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 46px;
+            z-index: 2147482998;
+            padding: 12px 14px 16px;
+            background: linear-gradient(to top, rgba(255,255,255,0.98), rgba(255,255,255,0.92));
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.12);
+            display: none;
+            pointer-events: auto;
+        }
+
+        .hotel-list-panel.active {
+            display: block;
+        }
+
+        .hotel-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .hotel-list-subtitle {
+            color: #666;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .hotel-card-row {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            scroll-snap-type: x mandatory;
+        }
+
+        .hotel-card-row::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hotel-card {
+            flex: 0 0 286px;
+            scroll-snap-align: start;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            background: #fff;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        }
+
+        .hotel-card:hover,
+        .hotel-card.active {
+            border-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+            background: #f8fbff;
+        }
+
+        .hotel-card-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .hotel-card-title {
+            font-size: 14px;
+            color: #111827;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 6px;
+            flex: 1;
+        }
+
+        .hotel-card-favorite {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #94a3b8;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+        }
+
+        .hotel-card-favorite.active {
+            color: #f59e0b;
+            border-color: #fde68a;
+            background: #fffbeb;
+        }
+
+        .hotel-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #4f46e5;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .hotel-card-address {
+            color: #6b7280;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hotel-card-tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .hotel-card-tag {
+            background: #f1f5f9;
+            color: #475569;
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .detail-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.38);
+            z-index: 2147483010;
+            justify-content: flex-end;
+        }
+
+        .detail-overlay.active {
+            display: flex;
+        }
+
+        .detail-drawer {
+            width: min(520px, 100vw);
+            height: 100%;
+            background: #fff;
+            box-shadow: -18px 0 60px rgba(15, 23, 42, 0.2);
+            overflow-y: auto;
+            padding: 22px;
+        }
+
+        .detail-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            align-items: flex-start;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .detail-title {
+            font-size: 24px;
+            font-weight: 850;
+            line-height: 1.25;
+            letter-spacing: 0;
+        }
+
+        .detail-close {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #334155;
+        }
+
+        .score-panel {
+            display: grid;
+            grid-template-columns: 116px 1fr;
+            gap: 16px;
+            align-items: center;
+            padding: 18px 0;
+        }
+
+        .score-ring {
+            width: 104px;
+            height: 104px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: conic-gradient(#2563eb 0deg, #e2e8f0 0deg);
+        }
+
+        .score-ring-inner {
+            width: 78px;
+            height: 78px;
+            border-radius: 50%;
+            background: white;
+            display: grid;
+            place-items: center;
+            color: #172033;
+            font-size: 24px;
+            font-weight: 850;
+        }
+
+        .risk-pill {
+            display: inline-flex;
+            width: fit-content;
+            border-radius: 999px;
+            padding: 7px 11px;
+            font-size: 13px;
+            font-weight: 800;
+            background: #eef2ff;
+            color: #3730a3;
+            margin-bottom: 8px;
+        }
+
+        .detail-meta {
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .detail-section {
+            border-top: 1px solid #e5e7eb;
+            padding: 16px 0;
+        }
+
+        .detail-section-title {
+            font-size: 15px;
+            font-weight: 850;
+            color: #111827;
+            margin-bottom: 10px;
+        }
+
+        .detail-text {
+            color: #475569;
+            line-height: 1.7;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .safety-summary-card {
+            border: 1px solid #dbe4f0;
+            border-left: 5px solid #f59e0b;
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 14px;
+        }
+
+        .safety-summary-card.safe {
+            border-left-color: #10b981;
+            background: #f6fefb;
+        }
+
+        .safety-summary-card.risk {
+            border-left-color: #ef4444;
+            background: #fff8f8;
+        }
+
+        .safety-summary-card.unknown {
+            border-left-color: #94a3b8;
+            background: #f8fafc;
+        }
+
+        .safety-summary-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .safety-summary-label {
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 850;
+        }
+
+        .safety-summary-score {
+            flex: 0 0 auto;
+            border-radius: 999px;
+            background: #172033;
+            color: white;
+            padding: 5px 9px;
+            font-size: 12px;
+            font-weight: 850;
+        }
+
+        .safety-summary-main {
+            color: #172033;
+            font-size: 18px;
+            font-weight: 850;
+            line-height: 1.45;
+            margin-bottom: 10px;
+        }
+
+        .safety-summary-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .safety-summary-list li {
+            display: inline-flex;
+            color: #475569;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid #dbe4f0;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 750;
+            line-height: 1.35;
+            padding: 7px 10px;
+        }
+
+        .dimension-list,
+        .evidence-list,
+        .poi-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .detail-item {
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .detail-item-title {
+            color: #1f2937;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+
+        .detail-item-meta {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 5px;
+            line-height: 1.5;
+        }
+
+        .drawer-actions {
+            display: flex;
+            gap: 10px;
+            padding-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .primary-action,
+        .secondary-action {
+            border: 0;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .primary-action {
+            background: #2563eb;
+            color: white;
+            flex: 1;
+        }
+
+        .secondary-action {
+            background: #eef2ff;
+            color: #3730a3;
+        }
+
+        /* 加载提示 */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 2147483012;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        /* Web 端个人中心 */
+        .profile-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.34);
+            z-index: 2147483009;
+            justify-content: flex-end;
+        }
+
+        .profile-overlay.active {
+            display: flex;
+        }
+
+        .profile-drawer {
+            width: min(460px, 100vw);
+            height: 100%;
+            background: #f8fafc;
+            box-shadow: -18px 0 60px rgba(15, 23, 42, 0.22);
+            overflow-y: auto;
+            padding: 22px;
+        }
+
+        .profile-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            padding-bottom: 18px;
+        }
+
+        .profile-kicker {
+            color: #2563eb;
+            font-size: 13px;
+            font-weight: 850;
+            margin-bottom: 8px;
+        }
+
+        .profile-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: #111827;
+            letter-spacing: 0;
+        }
+
+        .profile-subtitle {
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.55;
+            margin-top: 8px;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .profile-stat {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff;
+            padding: 12px;
+        }
+
+        .profile-stat-value {
+            font-size: 20px;
+            font-weight: 900;
+            color: #172033;
+        }
+
+        .profile-stat-label {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .profile-section {
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .profile-section-title {
+            font-size: 15px;
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 10px;
+        }
+
+        .profile-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .profile-hotel-item {
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .profile-hotel-item:hover {
+            border-color: #2563eb;
+            background: #fff;
+        }
+
+        .profile-hotel-title {
+            color: #111827;
+            font-size: 13px;
+            font-weight: 850;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .profile-hotel-meta,
+        .profile-note {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.55;
+            margin-top: 4px;
+        }
+
+        .profile-preference-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .profile-preference-row select {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            height: 38px;
+            padding: 0 10px;
+            color: #172033;
+            font-weight: 700;
+        }
+
+        /* 版本号 */
+        .version {
+            position: fixed;
+            bottom: 8px;
+            right: 20px;
+            background: #172033;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 1000;
+            font-size: 12px;
+        }
+
+        @media (max-width: 760px) {
+            .modal-overlay {
+                align-items: flex-end;
+                padding: 0;
+            }
+
+            .modal-content {
+                width: 100%;
+                max-width: none;
+                max-height: 88%;
+                border-radius: 8px 8px 0 0;
+            }
+
+            .modal-header,
+            .city-selection {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+
+            .cities-container {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .map-top-bar {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+
+            .switch-city-btn {
+                align-self: flex-end;
+            }
+
+            .top-action-stack {
+                flex-direction: row;
+                justify-content: flex-end;
+            }
+
+            .map-control-shell {
+                width: 100%;
+                padding: 10px;
+            }
+
+            .map-search-row {
+                grid-template-columns: 1fr;
+            }
+
+            .hotel-card {
+                flex-basis: 252px;
+            }
+
+            .detail-overlay {
+                align-items: flex-end;
+            }
+
+            .detail-drawer {
+                width: 100%;
+                height: 86vh;
+                border-radius: 8px 8px 0 0;
+                padding: 18px;
+            }
+
+            .profile-overlay {
+                align-items: flex-end;
+            }
+
+            .profile-drawer {
+                width: 100%;
+                height: 88vh;
+                border-radius: 8px 8px 0 0;
+                padding: 18px;
+            }
+
+            .profile-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .score-panel {
+                grid-template-columns: 96px 1fr;
+            }
+
+            .score-ring {
+                width: 88px;
+                height: 88px;
+            }
+
+            .score-ring-inner {
+                width: 66px;
+                height: 66px;
+                font-size: 21px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 开屏页 -->
+    <div id="splash-screen">
+        <h1>女性安全地图</h1>
+    </div>
+
+    <!-- 加载提示 -->
+    <div class="loading" id="loading">
+        <div>加载中...</div>
+    </div>
+
+    <!-- 城市选择模态框 -->
+    <div class="modal-overlay active" id="cityModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">选择城市</div>
+                <div class="modal-subtitle">首发城市已全部保留。没有真实数据的城市会展示地图和空状态，不影响用户继续切换。</div>
+            </div>
+            <div class="city-selection" id="citySelection">
+                <!-- 城市列表将从数据库动态加载 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 地图页面 -->
+    <div class="page map-page active" id="mapPage">
+        <div class="map-container">
+            <div class="map-top-bar">
+                <div class="map-control-shell">
+                    <div class="map-control-header">
+                        <div>
+                            <div class="current-city-label" id="currentCityLabel">选择城市</div>
+                            <div class="map-count-label" id="hotelCountLabel">选择城市后查看酒店安全数据</div>
+                        </div>
+                    </div>
+                    <div class="map-search-row">
+                        <input class="map-search-input" id="hotelSearchInput" type="search" placeholder="搜索酒店名或地址">
+                        <select class="map-sort-select" id="hotelSortSelect" aria-label="酒店排序">
+                            <option value="score-desc">安全评分从高到低</option>
+                            <option value="score-asc">安全评分从低到高</option>
+                            <option value="name-asc">酒店名称 A-Z</option>
+                            <option value="updated-desc">最近更新优先</option>
+                        </select>
+                    </div>
+                    <div class="filter-row" id="riskFilterRow">
+                        <button class="filter-chip active" type="button" data-risk-filter="rated" data-filter-label="已初评" aria-pressed="true" onclick="handleRiskFilterButton(event, 'rated')">已初评</button>
+                        <button class="filter-chip" type="button" data-risk-filter="all" data-filter-label="全部酒店" aria-pressed="false" onclick="handleRiskFilterButton(event, 'all')">全部酒店</button>
+                        <button class="filter-chip" type="button" data-risk-filter="safe" data-filter-label="相对较安全" aria-pressed="false" onclick="handleRiskFilterButton(event, 'safe')">相对较安全</button>
+                        <button class="filter-chip" type="button" data-risk-filter="attention" data-filter-label="需留意" aria-pressed="false" onclick="handleRiskFilterButton(event, 'attention')">需留意</button>
+                        <button class="filter-chip" type="button" data-risk-filter="risk" data-filter-label="高风险" aria-pressed="false" onclick="handleRiskFilterButton(event, 'risk')">高风险</button>
+                        <button class="filter-chip" type="button" data-risk-filter="unknown" data-filter-label="待补充" aria-pressed="false" onclick="handleRiskFilterButton(event, 'unknown')">待补充</button>
+                    </div>
+                    <div class="map-legend">
+                        <span><i class="legend-dot" style="background:#10b981;"></i>初评2.8+</span>
+                        <span><i class="legend-dot" style="background:#f59e0b;"></i>初评2.3-2.7</span>
+                        <span><i class="legend-dot" style="background:#ef4444;"></i>初评低于2.3</span>
+                        <span><i class="legend-dot" style="background:#94a3b8;"></i>待补充</span>
+                    </div>
+                </div>
+                <div class="top-action-stack">
+                    <button class="switch-city-btn" type="button" onclick="openCityModal()">切换城市</button>
+                    <button class="profile-entry-btn" type="button" onclick="openProfilePanel()">个人中心</button>
+                </div>
+            </div>
+            <div class="empty-state" id="mapEmptyState"></div>
+            <div id="map"></div>
+            <div class="map-loading-mask" id="mapLoadingMask">地图加载中...</div>
+            <div class="map-provider-badge">腾讯地图</div>
+            <div class="hotel-list-panel" id="hotelListPanel">
+                <div class="hotel-list-header">
+                    <span id="hotelListTitle">酒店安全数据</span>
+                    <span class="hotel-list-subtitle">点击卡片定位</span>
+                </div>
+                <div class="hotel-card-row" id="hotelCardRow"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 版本号 -->
+    <div class="version">公测版 · 数据持续补充中</div>
+
+    <!-- 酒店详情抽屉 -->
+    <div class="detail-overlay" id="hotelDetailOverlay">
+        <div class="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="detailHotelName">
+            <div class="detail-top">
+                <div>
+                    <div class="detail-title" id="detailHotelName">酒店详情</div>
+                    <div class="detail-meta" id="detailHotelAddress"></div>
+                </div>
+                <button class="detail-close" type="button" onclick="closeHotelDetail()" aria-label="关闭">×</button>
+            </div>
+            <div id="hotelDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- Web 个人中心抽屉 -->
+    <div class="profile-overlay" id="profileOverlay">
+        <div class="profile-drawer" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+            <div class="profile-top">
+                <div>
+                    <div class="profile-kicker">壳里账户</div>
+                    <div class="profile-title" id="profileTitle">个人中心</div>
+                    <div class="profile-subtitle">管理你的收藏、最近查看和安全地图偏好。</div>
+                </div>
+                <button class="detail-close" type="button" onclick="closeProfilePanel()" aria-label="关闭">×</button>
+            </div>
+            <div class="profile-grid">
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileRatedCount">0</div>
+                    <div class="profile-stat-label">已初评</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileFavoriteCount">0</div>
+                    <div class="profile-stat-label">我的收藏</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileRecentCount">0</div>
+                    <div class="profile-stat-label">最近查看</div>
+                </div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">我的收藏</div>
+                <div class="profile-list" id="profileFavoriteList"></div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">最近查看</div>
+                <div class="profile-list" id="profileRecentList"></div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">地图偏好</div>
+                <div class="profile-preference-row">
+                    <div>
+                        <div style="font-size:13px;font-weight:850;color:#172033;">默认展示</div>
+                        <div class="profile-note">下次打开页面时优先使用这个筛选口径。</div>
+                    </div>
+                    <select id="profileDefaultFilter" onchange="saveProfilePreference(this.value)">
+                        <option value="rated">已初评</option>
+                        <option value="all">全部酒店</option>
+                        <option value="safe">相对较安全</option>
+                        <option value="attention">需留意</option>
+                        <option value="risk">高风险</option>
+                    </select>
+                </div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">数据说明</div>
+                <div class="profile-note">“环境初评”基于周边地图 POI 形成第一层风险分布；“待补充”表示酒店已收录但还没有形成安全分。当前结果用于辅助筛选，不替代入住前的现场判断。</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🚀 页面加载开始');
+
+        // ========================================
+        // 配置后端 API
+        // ========================================
+        const USE_STATIC_SNAPSHOT = window.KELI_STATIC_SNAPSHOT === true
+            || window.location.hostname.endsWith('github.io')
+            || ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+        const API_BASE = window.API_BASE || (USE_STATIC_SNAPSHOT ? '' : window.location.origin);
+
+        let map = null;
+        let currentCity = null;
+        let currentPage = 'mapPage';
+        let hotelMarkerLayer = null;
+        let hotelInfoWindow = null;
+        let pendingHotelPopupTimer = null;
+        let lastHotelSelectionAt = 0;
+        let hotelMarkerById = new Map();
+        let hotelPositionById = new Map();
+        let suppressAutoFit = false;
+        let allHotels = [];
+        let filteredHotels = [];
+        let selectedRiskFilter = loadProfilePreference();
+        let activeHotelId = null;
+        let currentDetailHotel = null;
+
+        function readLocalJson(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function writeLocalJson(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function loadProfilePreference() {
+            return localStorage.getItem('keli_default_filter') || 'rated';
+        }
+
+        function saveProfilePreference(value) {
+            localStorage.setItem('keli_default_filter', value || 'rated');
+            setRiskFilter(value || 'rated');
+            renderProfilePanel();
+        }
+
+        function getFavoriteHotels() {
+            return readLocalJson('keli_favorite_hotels', []);
+        }
+
+        function saveFavoriteHotels(hotels) {
+            writeLocalJson('keli_favorite_hotels', hotels.slice(0, 80));
+        }
+
+        function getRecentHotels() {
+            return readLocalJson('keli_recent_hotels', []);
+        }
+
+        function saveRecentHotels(hotels) {
+            writeLocalJson('keli_recent_hotels', hotels.slice(0, 20));
+        }
+
+        function compactHotel(hotel) {
+            return {
+                id: Number(hotel.id),
+                name: hotel.name || '未知酒店',
+                address: hotel.address || '',
+                safety_score: hotel.safety_score ?? null,
+                risk_tag: hotel.risk_tag || '',
+                risk_level: hotel.risk_level || '',
+                latitude: hotel.latitude,
+                longitude: hotel.longitude,
+            };
+        }
+
+        // 显示/隐藏加载提示
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        function setLoadingText(text) {
+            document.getElementById('loading').querySelector('div').textContent = text || '加载中...';
+        }
+
+        function setMapLoading(active, text = '地图加载中...') {
+            const mask = document.getElementById('mapLoadingMask');
+            if (!mask) return;
+            mask.textContent = text;
+            mask.classList.toggle('active', Boolean(active));
+        }
+
+        function htmlEscape(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function formatScore(score) {
+            return score !== null && score !== undefined && score !== ''
+                ? Number(score).toFixed(1)
+                : 'N/A';
+        }
+
+        function splitTags(value, limit = 3) {
+            return String(value || '')
+                .split('|')
+                .map(tag => tag.trim())
+                .filter(Boolean)
+                .slice(0, limit);
+        }
+
+        function splitReadableClauses(value, limit = 3) {
+            return String(value || '')
+                .replace(/\s+/g, ' ')
+                .split(/[；;。！？\n]/)
+                .map(item => item.trim().replace(/^[，,、\s]+|[，,、\s]+$/g, ''))
+                .filter(Boolean)
+                .slice(0, limit);
+        }
+
+        function extractAuditSection(text, label) {
+            const source = String(text || '');
+            const start = source.search(new RegExp(`${label}[：:]`));
+            if (start < 0) return '';
+            const afterLabel = source.slice(start).replace(new RegExp(`^${label}[：:]\\s*`), '');
+            const next = afterLabel.search(/(?:安全问题|证据摘要|地图周边画像|周边画像|维度评分|置信度|数据置信度)[：:]/);
+            return (next >= 0 ? afterLabel.slice(0, next) : afterLabel).trim();
+        }
+
+        function buildSafetySummary(detail, hotel, riskLabel, scoreText, bucket) {
+            const rawConclusion = String(hotel.conclusion || hotel.advice || '').replace(/\s+/g, ' ').trim();
+            const firstBlock = rawConclusion
+                .split(/(?:安全问题|证据摘要|地图周边画像|周边画像|维度评分|置信度|数据置信度)[：:]/)[0]
+                .trim();
+            const main = splitReadableClauses(firstBlock, 1)[0]
+                || `${riskLabel}，建议结合位置、评价和现场情况谨慎判断。`;
+            const issueText = extractAuditSection(rawConclusion, '安全问题');
+            const issueItems = splitReadableClauses(issueText, 3);
+            const tagItems = splitTags(hotel.risk_tag, 3);
+            const fallbackItems = tagItems.length ? tagItems : ['暂无足够公开证据，建议作为初筛参考。'];
+            const bullets = (issueItems.length ? issueItems : fallbackItems)
+                .map(item => item.replace(/^安全问题[：:]/, '').trim())
+                .filter((item, index, array) => item && array.indexOf(item) === index)
+                .slice(0, 3);
+            return `
+                <div class="safety-summary-card ${htmlEscape(bucket)}">
+                    <div class="safety-summary-head">
+                        <div class="safety-summary-label">初步安全判断</div>
+                        <div class="safety-summary-score">${htmlEscape(scoreText)} · ${htmlEscape(riskLabel)}</div>
+                    </div>
+                    <div class="safety-summary-main">${htmlEscape(main)}</div>
+                    <ul class="safety-summary-list">
+                        ${bullets.map(item => `<li>${htmlEscape(item)}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function isUnknownRiskHotel(hotel) {
+            const rawScore = hotel?.safety_score;
+            return rawScore === null
+                || rawScore === undefined
+                || rawScore === ''
+                || !Number.isFinite(Number(rawScore));
+        }
+
+        function scoreBucket(hotel) {
+            if (isUnknownRiskHotel(hotel)) return 'unknown';
+            const score = Number(hotel.safety_score);
+            if (!Number.isFinite(score)) return 'unknown';
+            if (score >= 2.8) return 'safe';
+            if (score >= 2.3) return 'attention';
+            return 'risk';
+        }
+
+        function matchesRiskFilter(hotel, filterValue) {
+            const bucket = scoreBucket(hotel);
+            return filterValue === 'all'
+                || (filterValue === 'rated' && bucket !== 'unknown')
+                || bucket === filterValue;
+        }
+
+        function countHotelsForFilter(filterValue) {
+            return allHotels.filter(hotel => hotel.latitude && hotel.longitude && matchesRiskFilter(hotel, filterValue)).length;
+        }
+
+        function updateRiskFilterChips() {
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                const filterValue = chip.getAttribute('data-risk-filter') || 'all';
+                const label = chip.getAttribute('data-filter-label') || chip.textContent.trim();
+                const active = filterValue === selectedRiskFilter;
+                chip.classList.toggle('active', active);
+                chip.setAttribute('aria-pressed', active ? 'true' : 'false');
+                chip.textContent = allHotels.length ? `${label} ${countHotelsForFilter(filterValue)}` : label;
+            });
+        }
+
+        function setRiskFilter(filterValue) {
+            selectedRiskFilter = filterValue || 'rated';
+            activeHotelId = null;
+            suppressAutoFit = false;
+            updateRiskFilterChips();
+            try {
+                applyHotelFilters();
+            } catch (error) {
+                console.error('筛选酒店失败:', error);
+                showMapMessage('筛选时遇到问题，请刷新页面后重试。');
+            }
+        }
+
+        function handleRiskFilterButton(event, filterValue) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            setRiskFilter(filterValue);
+        }
+
+        function handleRiskFilterByPoint(event) {
+            if (!event || typeof event.clientX !== 'number' || typeof event.clientY !== 'number') return;
+            const chips = Array.from(document.querySelectorAll('.filter-chip'));
+            const hitChip = chips.find(chip => {
+                const rect = chip.getBoundingClientRect();
+                return event.clientX >= rect.left
+                    && event.clientX <= rect.right
+                    && event.clientY >= rect.top
+                    && event.clientY <= rect.bottom;
+            });
+            if (!hitChip) return;
+            event.preventDefault();
+            event.stopPropagation();
+            setRiskFilter(hitChip.getAttribute('data-risk-filter') || 'all');
+        }
+
+        function displayRiskLabel(hotel) {
+            const bucket = scoreBucket(hotel);
+            if (bucket === 'safe') return '初步相对安全';
+            if (bucket === 'attention') return '初步需留意';
+            if (bucket === 'risk') return '初步高风险';
+            return '待补充';
+        }
+
+        function isFavoriteHotel(hotelId) {
+            return getFavoriteHotels().some(item => Number(item.id) === Number(hotelId));
+        }
+
+        function toggleFavoriteHotel(hotel) {
+            if (!hotel?.id) return;
+            const hotelId = Number(hotel.id);
+            const favorites = getFavoriteHotels();
+            const exists = favorites.some(item => Number(item.id) === hotelId);
+            const nextFavorites = exists
+                ? favorites.filter(item => Number(item.id) !== hotelId)
+                : [compactHotel(hotel), ...favorites.filter(item => Number(item.id) !== hotelId)];
+            saveFavoriteHotels(nextFavorites);
+            renderHotelList(filteredHotels);
+            renderProfilePanel();
+            updateDetailFavoriteButton();
+        }
+
+        function addRecentHotel(hotel) {
+            if (!hotel?.id) return;
+            const hotelId = Number(hotel.id);
+            const recent = getRecentHotels().filter(item => Number(item.id) !== hotelId);
+            saveRecentHotels([compactHotel(hotel), ...recent]);
+            renderProfilePanel();
+        }
+
+        function markerColorForHotel(hotel) {
+            const bucket = scoreBucket(hotel);
+            if (bucket === 'safe') return '#10b981';
+            if (bucket === 'attention') return '#f59e0b';
+            if (bucket === 'risk') return '#ef4444';
+            return '#94a3b8';
+        }
+
+        function markerStyleIdForHotel(hotel) {
+            const bucket = scoreBucket(hotel);
+            if (bucket === 'safe') return 'safe';
+            if (bucket === 'attention') return 'attention';
+            if (bucket === 'risk') return 'risk';
+            return 'unknown';
+        }
+
+        function createMarkerIcon(color, options = {}) {
+            const size = options.size || 28;
+            const center = size / 2;
+            const coreRadius = options.coreRadius || 8;
+            const outerRadius = options.outerRadius || 12;
+            const strokeWidth = options.strokeWidth || 4;
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+                    <circle cx="${center}" cy="${center}" r="${coreRadius}" fill="${color}" stroke="white" stroke-width="${strokeWidth}"/>
+                    <circle cx="${center}" cy="${center}" r="${outerRadius}" fill="none" stroke="rgba(15,23,42,.14)" stroke-width="1"/>
+                </svg>
+            `.replace(/\s+/g, ' ').trim();
+            return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        }
+
+        function getTencentMarkerStyles() {
+            return {
+                safe: new TMap.MarkerStyle({
+                    width: 28,
+                    height: 28,
+                    anchor: { x: 14, y: 14 },
+                    src: createMarkerIcon('#10b981'),
+                }),
+                attention: new TMap.MarkerStyle({
+                    width: 28,
+                    height: 28,
+                    anchor: { x: 14, y: 14 },
+                    src: createMarkerIcon('#f59e0b'),
+                }),
+                risk: new TMap.MarkerStyle({
+                    width: 28,
+                    height: 28,
+                    anchor: { x: 14, y: 14 },
+                    src: createMarkerIcon('#ef4444'),
+                }),
+                unknown: new TMap.MarkerStyle({
+                    width: 22,
+                    height: 22,
+                    anchor: { x: 11, y: 11 },
+                    src: createMarkerIcon('#94a3b8', { size: 22, coreRadius: 6, outerRadius: 9, strokeWidth: 3 }),
+                }),
+            };
+        }
+
+        function formatDate(value) {
+            if (!value) return '暂无更新时间';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+            return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        }
+
+        async function apiFetch(path, options = {}) {
+            if (USE_STATIC_SNAPSHOT && (!options.method || options.method === 'GET')) {
+                if (path === '/api/cities') {
+                    return fetchSnapshot('./data/cities.json');
+                }
+                if (path.startsWith('/api/hotels?')) {
+                    const params = new URLSearchParams(path.split('?')[1] || '');
+                    const cityCode = params.get('city_code');
+                    return fetchSnapshot(`./data/hotels-${encodeURIComponent(cityCode)}.json`);
+                }
+                const detailMatch = path.match(/^\/api\/hotels\/(\d+)$/);
+                if (detailMatch) {
+                    try {
+                        return await fetchSnapshot(`./data/details/${detailMatch[1]}.json`);
+                    } catch (error) {
+                        const hotel = allHotels.find(item => Number(item.id) === Number(detailMatch[1]));
+                        if (hotel) {
+                            return { hotel, evidence_items: [], environment_pois: [], dimensions: [] };
+                        }
+                        throw error;
+                    }
+                }
+            }
+            const response = await fetch(`${API_BASE}${path}`, options);
+            if (!response.ok) {
+                const message = await response.text();
+                throw new Error(message || `请求失败：${response.status}`);
+            }
+            return response.json();
+        }
+
+        async function fetchSnapshot(url) {
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`数据快照加载失败：${response.status}`);
+            }
+            return response.json();
+        }
+
+        // 从数据库加载城市列表
+        async function loadCities() {
+            try {
+                console.log('📡 从阿里云 API 加载城市列表...');
+                setLoadingText('加载城市...');
+                showLoading();
+
+                const data = await apiFetch('/api/cities');
+
+                console.log('✅ 加载到', data.length, '个城市');
+                renderCities(data);
+                hideLoading();
+                return data;
+            } catch (error) {
+                console.error('❌ 加载城市失败:', error);
+                hideLoading();
+                alert('加载城市列表失败，请确认后端 API 已启动');
+                return [];
+            }
+        }
+
+        // 渲染城市列表
+        function renderCities(cities) {
+            const citySelection = document.getElementById('citySelection');
+            if (!cities || cities.length === 0) {
+                citySelection.innerHTML = '<div style="color:#666; line-height:1.6;">暂无城市数据。请先在阿里云运行酒店安全 agent，或配置 CITY_OPTIONS_JSON。</div>';
+                return;
+            }
+
+            const cityOrder = ['上海', '北京', '广州', '成都', '杭州', '深圳', '贵阳'];
+            cities = [...cities].sort((a, b) => {
+                const ai = cityOrder.indexOf(a.name);
+                const bi = cityOrder.indexOf(b.name);
+                return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            });
+            
+            // 按国家分组
+            const citiesByCountry = {};
+            cities.forEach(city => {
+                const country = city.country || '其他';
+                if (!citiesByCountry[country]) {
+                    citiesByCountry[country] = [];
+                }
+                citiesByCountry[country].push(city);
+            });
+
+            // 生成 HTML
+            let html = '';
+            for (const [country, citiesInCountry] of Object.entries(citiesByCountry)) {
+                html += `
+                    <div class="country-section">
+                        <div class="country-title">${country}</div>
+                        <div class="cities-container">
+                            ${citiesInCountry.map(city => `
+                                <div class="city-button" data-city="${encodeURIComponent(JSON.stringify(city))}">
+                                    <div class="city-button-text">${htmlEscape(city.name)}</div>
+                                    <div class="city-button-meta">首发城市 · 可切换查看</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            citySelection.innerHTML = html;
+        }
+
+        function getInitialCity(cities) {
+            const params = new URLSearchParams(window.location.search);
+            const cityCode = params.get('city_code') || params.get('city');
+            if (!cityCode) return null;
+            return (cities || []).find(city => String(city.city_code || city.id) === String(cityCode)) || null;
+        }
+
+        // 从数据库加载酒店数据
+        async function loadHotels(cityCode) {
+            try {
+                console.log('📡 从阿里云 API 加载酒店数据，城市代码:', cityCode);
+                setLoadingText('加载酒店安全数据...');
+                showLoading();
+
+                const data = await apiFetch(`/api/hotels?city_code=${encodeURIComponent(cityCode)}&limit=3000`);
+
+                console.log('✅ 加载到', data.length, '家酒店');
+                hideLoading();
+                return data;
+            } catch (error) {
+                console.error('❌ 加载酒店失败:', error);
+                hideLoading();
+                showMapMessage('酒店数据暂时无法加载。请稍后刷新，或先切换城市查看地图。');
+                return [];
+            }
+        }
+
+        // 打开城市选择模态框
+        function openCityModal() {
+            document.getElementById('cityModal').classList.add('active');
+        }
+
+        // 城市按钮点击事件（事件委托）
+        document.addEventListener('click', function(e) {
+            const cityButton = e.target.closest('.city-button');
+            if (cityButton) {
+                const cityDataStr = cityButton.getAttribute('data-city');
+                if (cityDataStr) {
+                    try {
+                        const cityData = JSON.parse(decodeURIComponent(cityDataStr));
+                        selectCity(cityData);
+                    } catch (error) {
+                        console.error('解析城市数据失败:', error);
+                    }
+                }
+            }
+        });
+
+        // 选择城市
+        async function selectCity(city) {
+            console.log('========================================');
+            console.log('🏙️ 选择城市:', city.name);
+            console.log('========================================');
+            
+            currentCity = city;
+            document.getElementById('hotelSearchInput').value = '';
+            selectedRiskFilter = loadProfilePreference();
+            updateRiskFilterChips();
+            
+            // 关闭模态框
+            document.getElementById('cityModal').classList.remove('active');
+            
+            // 切换到地图页面
+            switchPage('mapPage');
+            
+            // 延迟初始化地图
+            setTimeout(async () => {
+                await initMap(city);
+            }, 300);
+        }
+
+        // 初始化地图
+        async function initMap(city) {
+            console.log('🗺️ 初始化地图，城市:', city.name);
+            document.getElementById('mapEmptyState').classList.remove('active');
+            document.getElementById('currentCityLabel').textContent = city.name;
+            document.getElementById('hotelCountLabel').textContent = '正在加载酒店安全数据';
+            closeHotelDetail();
+            setMapLoading(true, '腾讯地图加载中...');
+
+            if (!window.TMap) {
+                setMapLoading(false);
+                showMapMessage('腾讯地图 SDK 加载失败，请刷新页面或检查腾讯地图 Key 的域名白名单。');
+                return;
+            }
+
+            // 清除旧地图和标记
+            if (map) {
+                console.log('🗑️ 清除旧地图和标记');
+                if (hotelMarkerLayer) {
+                    hotelMarkerLayer.setMap(null);
+                    hotelMarkerLayer = null;
+                }
+                closeHotelInfoWindow(true);
+                hotelInfoWindow = null;
+                hotelMarkerById = new Map();
+                hotelPositionById = new Map();
+                if (typeof map.destroy === 'function') {
+                    map.destroy();
+                }
+                map = null;
+            }
+
+            // 创建新地图
+            console.log('🆕 创建新地图');
+            map = new TMap.Map(document.getElementById('map'), {
+                center: new TMap.LatLng(Number(city.latitude), Number(city.longitude)),
+                zoom: 12,
+                minZoom: 8,
+                maxZoom: 19,
+                pitch: 0,
+                rotation: 0,
+                viewMode: '2D',
+                showControl: true,
+                baseMap: {
+                    type: 'vector',
+                    features: ['base', 'building3d', 'point'],
+                },
+            });
+            map.on('tilesloaded', () => setMapLoading(false));
+            map.on('idle', () => setMapLoading(false));
+            map.on('click', handleMapBlankClick);
+            setTimeout(() => setMapLoading(false), 2500);
+
+            console.log('✅ 地图创建成功');
+
+            // 加载并显示酒店标记
+            const hotels = await loadHotels(city.city_code || city.id);
+            allHotels = Array.isArray(hotels) ? hotels : [];
+            activeHotelId = null;
+            applyHotelFilters();
+        }
+
+        function buildHotelPopup(hotel) {
+            const tags = splitTags(hotel.risk_tag, 3);
+            const bucket = scoreBucket(hotel);
+            const scoreText = bucket === 'unknown' ? '待补充' : `${formatScore(hotel.safety_score)} ⭐`;
+            const riskLabel = displayRiskLabel(hotel);
+            return `
+                <div class="hotel-popup">
+                    <div class="hotel-name">${htmlEscape(hotel.name)}</div>
+                    <div class="hotel-info">${htmlEscape(hotel.address || '地址未知')}</div>
+                    <div class="hotel-score">安全评分: ${scoreText} / ${htmlEscape(riskLabel)}</div>
+                    ${tags.length ? `<div class="hotel-tags">${tags.map(tag => `<span class="hotel-tag">${htmlEscape(tag)}</span>`).join('')}</div>` : ''}
+                    ${hotel.advice ? `<div class="hotel-info" style="margin-top:8px;">${htmlEscape(hotel.advice)}</div>` : ''}
+                    <span class="popup-link" onclick="showHotelDetail(${hotel.id})">查看详细证据</span>
+                </div>
+            `;
+        }
+
+        function moveMapTo(position, zoom = 15) {
+            if (!map || !position) return;
+            const targetZoom = Math.max(typeof map.getZoom === 'function' ? map.getZoom() : 12, zoom);
+            if (typeof map.easeTo === 'function') {
+                map.easeTo({
+                    center: position,
+                    zoom: targetZoom,
+                    duration: 500,
+                });
+                return;
+            }
+            map.setCenter(position);
+            map.setZoom(targetZoom);
+        }
+
+        function scrollActiveHotelCardIntoView(hotelId) {
+            const row = document.getElementById('hotelCardRow');
+            const card = row?.querySelector(`.hotel-card[data-hotel-id="${hotelId}"]`);
+            if (!row || !card) return;
+            const rowRect = row.getBoundingClientRect();
+            const cardRect = card.getBoundingClientRect();
+            const targetLeft = row.scrollLeft + (cardRect.left - rowRect.left) - Math.max(12, (rowRect.width - cardRect.width) / 2);
+            row.scrollTo({
+                left: Math.max(0, targetLeft),
+                behavior: 'smooth',
+            });
+        }
+
+        function selectHotelOnMap(hotel, position, options = {}) {
+            if (!hotel || !position) return;
+            lastHotelSelectionAt = Date.now();
+            closeHotelInfoWindow(true);
+            activeHotelId = Number(hotel.id);
+            suppressAutoFit = true;
+            renderHotelList(filteredHotels);
+            scrollActiveHotelCardIntoView(activeHotelId);
+            if (options.centerMap !== false) {
+                moveMapTo(position, options.zoom || 15);
+            }
+            pendingHotelPopupTimer = window.setTimeout(() => {
+                pendingHotelPopupTimer = null;
+                openHotelInfoWindow(hotel, position);
+            }, options.popupDelay ?? 120);
+        }
+
+        function closeHotelInfoWindow(cancelPending = false) {
+            if (cancelPending && pendingHotelPopupTimer) {
+                window.clearTimeout(pendingHotelPopupTimer);
+                pendingHotelPopupTimer = null;
+            }
+            if (!hotelInfoWindow) return;
+            const currentInfoWindow = hotelInfoWindow;
+            hotelInfoWindow = null;
+            if (typeof currentInfoWindow.setMap === 'function') {
+                currentInfoWindow.setMap(null);
+                return;
+            }
+            if (typeof currentInfoWindow.close === 'function') {
+                currentInfoWindow.close();
+            }
+        }
+
+        function clearActiveHotelSelection() {
+            if (!activeHotelId) return;
+            activeHotelId = null;
+            renderHotelList(filteredHotels);
+        }
+
+        function handleMapBlankClick() {
+            if (Date.now() - lastHotelSelectionAt < 280) return;
+            closeHotelInfoWindow(true);
+            clearActiveHotelSelection();
+        }
+
+        function openHotelInfoWindow(hotel, position) {
+            if (!map || !position) return;
+            closeHotelInfoWindow();
+            hotelInfoWindow = new TMap.InfoWindow({
+                map,
+                position,
+                content: buildHotelPopup(hotel),
+                offset: { x: 0, y: -14 },
+            });
+        }
+
+        function showMapMessage(message) {
+            const emptyState = document.getElementById('mapEmptyState');
+            emptyState.textContent = message;
+            emptyState.classList.add('active');
+        }
+
+        function clearMapMessage() {
+            document.getElementById('mapEmptyState').classList.remove('active');
+        }
+
+        function sortHotels(hotels) {
+            const sortValue = document.getElementById('hotelSortSelect')?.value || 'score-desc';
+            return [...hotels].sort((a, b) => {
+                const scoreA = scoreBucket(a) === 'unknown' ? null : Number(a.safety_score);
+                const scoreB = scoreBucket(b) === 'unknown' ? null : Number(b.safety_score);
+                if (sortValue === 'score-asc') return (scoreA ?? 999) - (scoreB ?? 999);
+                if (sortValue === 'name-asc') return String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN');
+                if (sortValue === 'updated-desc') return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+                return (scoreB ?? -1) - (scoreA ?? -1);
+            });
+        }
+
+        function applyHotelFilters() {
+            const query = (document.getElementById('hotelSearchInput')?.value || '').trim().toLowerCase();
+            filteredHotels = allHotels.filter(hotel => {
+                const hasLocation = hotel.latitude && hotel.longitude;
+                if (!hasLocation) return false;
+                const matchesRisk = matchesRiskFilter(hotel, selectedRiskFilter);
+                const haystack = `${hotel.name || ''} ${hotel.address || ''} ${hotel.risk_tag || ''}`.toLowerCase();
+                const matchesQuery = !query || haystack.includes(query);
+                return matchesRisk && matchesQuery;
+            });
+            filteredHotels = sortHotels(filteredHotels);
+            updateRiskFilterChips();
+            addHotelMarkers(filteredHotels);
+            renderHotelList(filteredHotels);
+            updateHotelCount();
+
+            if (!allHotels.length) {
+                showMapMessage(`${currentCity?.name || '当前城市'}的数据正在准备中。你可以先浏览地图，或切换到其他首发城市。`);
+            } else if (!filteredHotels.length) {
+                showMapMessage('没有符合当前筛选条件的酒店。可以清空搜索词或切换风险筛选。');
+            } else {
+                clearMapMessage();
+            }
+        }
+
+        function updateHotelCount() {
+            const label = document.getElementById('hotelCountLabel');
+            if (!label) return;
+            if (!currentCity) {
+                label.textContent = '选择城市后查看酒店安全数据';
+                return;
+            }
+            if (!allHotels.length) {
+                label.textContent = '数据准备中';
+                return;
+            }
+            const ratedCount = allHotels.filter(hotel => hotel.latitude && hotel.longitude && scoreBucket(hotel) !== 'unknown').length;
+            const pendingCount = allHotels.filter(hotel => hotel.latitude && hotel.longitude && scoreBucket(hotel) === 'unknown').length;
+            label.textContent = `已初评 ${ratedCount} 家，待补充 ${pendingCount} 家，当前显示 ${filteredHotels.length} 家`;
+        }
+
+        function renderHotelList(hotels) {
+            const panel = document.getElementById('hotelListPanel');
+            const title = document.getElementById('hotelListTitle');
+            const row = document.getElementById('hotelCardRow');
+            const validHotels = (hotels || []).filter(hotel => hotel.latitude && hotel.longitude);
+
+            if (!validHotels.length) {
+                panel.classList.remove('active');
+                row.innerHTML = '';
+                return;
+            }
+
+            title.textContent = `${currentCity?.name || '当前城市'} · ${validHotels.length} 家酒店`;
+            row.innerHTML = validHotels.map(hotel => {
+                const bucket = scoreBucket(hotel);
+                const scoreText = bucket === 'unknown' ? '待补充' : `${formatScore(hotel.safety_score)} 分`;
+                const riskLabel = displayRiskLabel(hotel);
+                const tags = splitTags(hotel.risk_tag, 2);
+                const favoriteActive = isFavoriteHotel(hotel.id);
+                return `
+                    <div class="hotel-card ${Number(hotel.id) === activeHotelId ? 'active' : ''}" data-hotel-id="${hotel.id}">
+                        <div class="hotel-card-top">
+                            <div class="hotel-card-title">${htmlEscape(hotel.name)}</div>
+                            <button class="hotel-card-favorite ${favoriteActive ? 'active' : ''}" type="button" data-favorite-id="${hotel.id}" aria-label="${favoriteActive ? '取消收藏' : '收藏酒店'}">${favoriteActive ? '★' : '☆'}</button>
+                        </div>
+                        <div class="hotel-card-meta">
+                            <span>${scoreText}</span>
+                            <span>${htmlEscape(riskLabel)}</span>
+                        </div>
+                        <div class="hotel-card-address">${htmlEscape(hotel.address || '地址未知')}</div>
+                        ${tags.length ? `<div class="hotel-card-tags">${tags.map(tag => `<span class="hotel-card-tag">${htmlEscape(tag)}</span>`).join('')}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+            panel.classList.add('active');
+        }
+
+        document.addEventListener('click', function(e) {
+            const favoriteButton = e.target.closest('.hotel-card-favorite');
+            if (favoriteButton) {
+                e.stopPropagation();
+                const hotelId = Number(favoriteButton.getAttribute('data-favorite-id'));
+                const hotel = allHotels.find(item => Number(item.id) === hotelId) || hotelMarkerById.get(hotelId);
+                if (hotel) toggleFavoriteHotel(hotel);
+                return;
+            }
+
+            const card = e.target.closest('.hotel-card');
+            if (!card || !map) return;
+
+            const hotelId = Number(card.getAttribute('data-hotel-id'));
+            const position = hotelPositionById.get(hotelId);
+            const hotel = hotelMarkerById.get(hotelId);
+            if (!position || !hotel) return;
+
+            selectHotelOnMap(hotel, position, { zoom: 15, popupDelay: 80 });
+        });
+
+        document.getElementById('hotelSearchInput').addEventListener('input', applyHotelFilters);
+        document.getElementById('hotelSortSelect').addEventListener('change', applyHotelFilters);
+        document.addEventListener('click', handleRiskFilterByPoint, true);
+        document.addEventListener('pointerup', handleRiskFilterByPoint, true);
+
+        document.getElementById('riskFilterRow').addEventListener('click', function(e) {
+            const chip = e.target.closest('.filter-chip');
+            if (!chip) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setRiskFilter(chip.getAttribute('data-risk-filter') || 'all');
+        });
+
+        document.getElementById('riskFilterRow').addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const chip = e.target.closest('.filter-chip');
+            if (!chip) return;
+            e.preventDefault();
+            setRiskFilter(chip.getAttribute('data-risk-filter') || 'all');
+        });
+
+        document.getElementById('hotelDetailOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeHotelDetail();
+        });
+
+        document.getElementById('profileOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeProfilePanel();
+        });
+
+        document.getElementById('profileOverlay').addEventListener('click', function(e) {
+            const item = e.target.closest('.profile-hotel-item');
+            if (!item) return;
+            openProfileHotel(item.getAttribute('data-profile-hotel-id'));
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeHotelInfoWindow(true);
+                clearActiveHotelSelection();
+                closeHotelDetail();
+                closeProfilePanel();
+                document.getElementById('cityModal').classList.remove('active');
+            }
+        });
+
+        // 添加酒店标记
+        function addHotelMarkers(hotels) {
+            console.log('📍 添加', hotels.length, '个酒店标记');
+            if (!map || !window.TMap) return;
+            if (hotelMarkerLayer) {
+                hotelMarkerLayer.setMap(null);
+                hotelMarkerLayer = null;
+            }
+            closeHotelInfoWindow(true);
+            hotelMarkerById = new Map();
+            hotelPositionById = new Map();
+
+            if (!hotels || hotels.length === 0) return;
+
+            const bounds = new TMap.LatLngBounds();
+            const geometries = [];
+
+            hotels.forEach(hotel => {
+                if (!hotel.latitude || !hotel.longitude) return;
+
+                const position = new TMap.LatLng(Number(hotel.latitude), Number(hotel.longitude));
+                geometries.push({
+                    id: String(hotel.id),
+                    styleId: markerStyleIdForHotel(hotel),
+                    position,
+                    properties: { hotel },
+                });
+                hotelMarkerById.set(Number(hotel.id), hotel);
+                hotelPositionById.set(Number(hotel.id), position);
+                bounds.extend(position);
+            });
+
+            if (!geometries.length) return;
+
+            hotelMarkerLayer = new TMap.MultiMarker({
+                map,
+                styles: getTencentMarkerStyles(),
+                geometries,
+            });
+            hotelMarkerLayer.on('click', (event) => {
+                const geometry = event.geometry || event.detail?.geometry;
+                const hotel = geometry?.properties?.hotel;
+                const position = geometry?.position;
+                if (!hotel || !position) return;
+                selectHotelOnMap(hotel, position, { zoom: 15, popupDelay: 160 });
+            });
+
+            if (!suppressAutoFit) {
+                if (geometries.length > 1 && typeof map.fitBounds === 'function') {
+                    map.fitBounds(bounds, {
+                        padding: {
+                            top: 140,
+                            left: 40,
+                            right: 40,
+                            bottom: 210,
+                        },
+                    });
+                } else if (geometries.length === 1) {
+                    map.setCenter(geometries[0].position);
+                    map.setZoom(15);
+                }
+            }
+            suppressAutoFit = false;
+            console.log('✅ 酒店标记添加完成');
+        }
+
+        async function showHotelDetail(hotelId) {
+            try {
+                closeHotelInfoWindow(true);
+                setLoadingText('加载酒店详情...');
+                showLoading();
+                const detail = await apiFetch(`/api/hotels/${hotelId}`);
+                hideLoading();
+                renderHotelDetail(detail);
+            } catch (error) {
+                hideLoading();
+                console.error('加载酒店详情失败:', error);
+                alert('加载酒店详情失败');
+            }
+        }
+
+        function renderHotelDetail(detail) {
+            const hotel = detail.hotel || {};
+            const evidence = detail.evidence_items || [];
+            const dimensions = detail.dimensions || [];
+            const pois = detail.environment_pois || [];
+            const bucket = scoreBucket(hotel);
+            const score = bucket === 'unknown' ? NaN : Number(hotel.safety_score);
+            const scoreText = bucket === 'unknown' ? '待补充' : formatScore(hotel.safety_score);
+            const scoreDegree = bucket === 'unknown' ? 0 : Math.max(0, Math.min(5, score)) / 5 * 360;
+            const scoreColor = markerColorForHotel(hotel);
+            const tags = splitTags(hotel.risk_tag, 5);
+            const riskLabel = displayRiskLabel(hotel);
+            const safetySummaryHtml = buildSafetySummary(detail, hotel, riskLabel, scoreText, bucket);
+            currentDetailHotel = hotel;
+            addRecentHotel(hotel);
+
+            activeHotelId = Number(hotel.id);
+            renderHotelList(filteredHotels);
+            document.getElementById('detailHotelName').textContent = hotel.name || '酒店详情';
+            document.getElementById('detailHotelAddress').textContent = hotel.address || '地址未知';
+            document.getElementById('hotelDetailContent').innerHTML = `
+                <div class="score-panel">
+                    <div class="score-ring" style="background: conic-gradient(${scoreColor} ${scoreDegree}deg, #e2e8f0 0deg);">
+                        <div class="score-ring-inner">${htmlEscape(scoreText)}</div>
+                    </div>
+                    <div>
+                        <div class="risk-pill">${htmlEscape(riskLabel)}</div>
+                        <div class="detail-meta">更新时间：${htmlEscape(formatDate(hotel.updated_at))}</div>
+                        ${tags.length ? `<div class="hotel-tags" style="margin-top:10px;">${tags.map(tag => `<span class="hotel-tag">${htmlEscape(tag)}</span>`).join('')}</div>` : ''}
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">安全结论</div>
+                    ${safetySummaryHtml}
+                </div>
+                ${hotel.negative_comments ? `
+                    <div class="detail-section">
+                        <div class="detail-section-title">负面线索</div>
+                        <div class="detail-text">${htmlEscape(hotel.negative_comments)}</div>
+                    </div>
+                ` : ''}
+                <div class="detail-section">
+                    <div class="detail-section-title">维度评分</div>
+                    ${dimensions.length ? `
+                        <div class="dimension-list">
+                            ${dimensions.slice(0, 8).map(item => `
+                                <div class="detail-item">
+                                    <div class="detail-item-title">${htmlEscape(item.dimension || '安全维度')} · ${formatScore(item.score)} 分</div>
+                                    <div class="detail-item-meta">${htmlEscape(item.reason || '暂无原因说明')}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<div class="detail-text">暂无维度评分。</div>'}
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">公开证据</div>
+                    ${evidence.length ? `
+                        <div class="evidence-list">
+                            ${evidence.slice(0, 6).map(item => `
+                                <div class="detail-item">
+                                    <div class="detail-item-title">${htmlEscape(item.claim || item.title || '公开线索')}</div>
+                                    <div class="detail-item-meta">${htmlEscape(item.platform || '来源未知')}${item.risk_type ? ` · ${htmlEscape(item.risk_type)}` : ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<div class="detail-text">暂无公开证据，建议结合现场和平台评论继续判断。</div>'}
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">周边环境</div>
+                    ${pois.length ? `
+                        <div class="poi-list">
+                            ${pois.slice(0, 6).map(item => `
+                                <div class="detail-item">
+                                    <div class="detail-item-title">${htmlEscape(item.name || item.category || '周边地点')}</div>
+                                    <div class="detail-item-meta">${htmlEscape(item.category || '')}${item.distance_meters ? ` · ${htmlEscape(item.distance_meters)} 米` : ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<div class="detail-text">暂无周边环境数据。</div>'}
+                </div>
+                <div class="drawer-actions">
+                    <button class="secondary-action" id="detailFavoriteButton" onclick="toggleFavoriteHotel(currentDetailHotel)"></button>
+                    ${hotel.booking_url ? `<button class="primary-action" onclick="openBookingUrl()">打开预订页面</button>` : ''}
+                    <button class="secondary-action" onclick="closeHotelDetail()">返回地图</button>
+                </div>
+            `;
+            updateDetailFavoriteButton();
+            document.getElementById('hotelDetailOverlay').classList.add('active');
+        }
+
+        function updateDetailFavoriteButton() {
+            const button = document.getElementById('detailFavoriteButton');
+            if (!button || !currentDetailHotel?.id) return;
+            const active = isFavoriteHotel(currentDetailHotel.id);
+            button.textContent = active ? '已收藏' : '收藏酒店';
+        }
+
+        function openBookingUrl() {
+            if (currentDetailHotel?.booking_url) {
+                window.open(currentDetailHotel.booking_url, '_blank', 'noopener,noreferrer');
+            }
+        }
+
+        function closeHotelDetail() {
+            const overlay = document.getElementById('hotelDetailOverlay');
+            if (overlay) overlay.classList.remove('active');
+        }
+
+        function renderProfileHotelList(containerId, hotels, emptyText) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            if (!hotels.length) {
+                container.innerHTML = `<div class="profile-note">${htmlEscape(emptyText)}</div>`;
+                return;
+            }
+            container.innerHTML = hotels.slice(0, 8).map(hotel => {
+                const bucket = scoreBucket(hotel);
+                const scoreText = bucket === 'unknown' ? '待补充' : `${formatScore(hotel.safety_score)} 分`;
+                return `
+                    <div class="profile-hotel-item" data-profile-hotel-id="${hotel.id}">
+                        <div class="profile-hotel-title">${htmlEscape(hotel.name)}</div>
+                        <div class="profile-hotel-meta">${scoreText} · ${htmlEscape(displayRiskLabel(hotel))}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderProfilePanel() {
+            const favorites = getFavoriteHotels();
+            const recent = getRecentHotels();
+            const ratedCount = allHotels.filter(hotel => hotel.latitude && hotel.longitude && scoreBucket(hotel) !== 'unknown').length;
+            const favoriteCount = document.getElementById('profileFavoriteCount');
+            const recentCount = document.getElementById('profileRecentCount');
+            const ratedCountEl = document.getElementById('profileRatedCount');
+            const defaultFilter = document.getElementById('profileDefaultFilter');
+            if (favoriteCount) favoriteCount.textContent = String(favorites.length);
+            if (recentCount) recentCount.textContent = String(recent.length);
+            if (ratedCountEl) ratedCountEl.textContent = String(ratedCount);
+            if (defaultFilter) defaultFilter.value = loadProfilePreference();
+            renderProfileHotelList('profileFavoriteList', favorites, '你收藏的酒店会显示在这里，方便之后快速回看。');
+            renderProfileHotelList('profileRecentList', recent, '打开酒店详情后会自动记录最近查看。');
+        }
+
+        function openProfilePanel() {
+            renderProfilePanel();
+            document.getElementById('profileOverlay')?.classList.add('active');
+        }
+
+        function closeProfilePanel() {
+            document.getElementById('profileOverlay')?.classList.remove('active');
+        }
+
+        function openProfileHotel(hotelId) {
+            const id = Number(hotelId);
+            closeProfilePanel();
+            const hotel = allHotels.find(item => Number(item.id) === id);
+            const position = hotelPositionById.get(id);
+            if (hotel && position) {
+                selectHotelOnMap(hotel, position, { zoom: 15, popupDelay: 80 });
+            }
+            showHotelDetail(id);
+        }
+
+        // 页面切换
+        function switchPage(pageId) {
+            console.log('切换到页面:', pageId);
+            
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // 显示目标页面
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+            
+            currentPage = pageId;
+            
+            // 如果切换到地图页面且没有选择城市，打开城市选择
+            if (pageId === 'mapPage' && !currentCity) {
+                openCityModal();
+            }
+        }
+
+        // 开屏页处理
+        window.addEventListener('load', async () => {
+            console.log('页面加载完成');
+            
+            // 加载城市列表
+            const cities = await loadCities();
+            const initialCity = getInitialCity(cities);
+            if (initialCity) {
+                selectCity(initialCity);
+            }
+            
+            // 移除开屏页
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    setTimeout(() => {
+                        splash.remove();
+                        console.log('开屏页已移除');
+                    }, 800);
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

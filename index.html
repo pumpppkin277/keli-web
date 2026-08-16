@@ -214,9 +214,9 @@
             z-index: 2147483000;
             display: flex;
             align-items: flex-start;
-            justify-content: flex-end;
+            justify-content: space-between;
             gap: 12px;
-            pointer-events: none;
+            pointer-events: auto;
         }
 
         .map-control-shell {
@@ -229,6 +229,12 @@
             pointer-events: auto;
             position: relative;
             z-index: 2147483001;
+        }
+
+        #cityModal.active ~ #mapPage .map-control-shell {
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
         }
 
         .map-control-header {
@@ -1151,6 +1157,37 @@
     <div class="page map-page active" id="mapPage">
         <div class="map-container">
             <div class="map-top-bar">
+                <div class="map-control-shell">
+                    <div class="map-control-header">
+                        <div>
+                            <div class="current-city-label" id="currentCityLabel">选择城市</div>
+                            <div class="map-count-label" id="hotelCountLabel">选择城市后查看酒店安全数据</div>
+                        </div>
+                    </div>
+                    <div class="map-search-row">
+                        <input class="map-search-input" id="hotelSearchInput" type="search" placeholder="搜索酒店名或地址">
+                        <select class="map-sort-select" id="hotelSortSelect" aria-label="酒店排序">
+                            <option value="score-desc">安全评分从高到低</option>
+                            <option value="score-asc">安全评分从低到高</option>
+                            <option value="name-asc">酒店名称 A-Z</option>
+                            <option value="updated-desc">最近更新优先</option>
+                        </select>
+                    </div>
+                    <div class="filter-row" id="riskFilterRow">
+                        <button class="filter-chip" type="button" data-risk-filter="rated" data-filter-label="已初评" aria-pressed="false" onclick="handleRiskFilterButton(event, 'rated')">已初评</button>
+                        <button class="filter-chip active" type="button" data-risk-filter="all" data-filter-label="全部酒店" aria-pressed="true" onclick="handleRiskFilterButton(event, 'all')">全部酒店</button>
+                        <button class="filter-chip" type="button" data-risk-filter="safe" data-filter-label="相对较安全" aria-pressed="false" onclick="handleRiskFilterButton(event, 'safe')">相对较安全</button>
+                        <button class="filter-chip" type="button" data-risk-filter="attention" data-filter-label="需留意" aria-pressed="false" onclick="handleRiskFilterButton(event, 'attention')">需留意</button>
+                        <button class="filter-chip" type="button" data-risk-filter="risk" data-filter-label="高风险" aria-pressed="false" onclick="handleRiskFilterButton(event, 'risk')">高风险</button>
+                        <button class="filter-chip" type="button" data-risk-filter="unknown" data-filter-label="待补充" aria-pressed="false" onclick="handleRiskFilterButton(event, 'unknown')">待补充</button>
+                    </div>
+                    <div class="map-legend">
+                        <span><i class="legend-dot" style="background:#10b981;"></i>初评2.8+</span>
+                        <span><i class="legend-dot" style="background:#f59e0b;"></i>初评2.3-2.7</span>
+                        <span><i class="legend-dot" style="background:#ef4444;"></i>初评低于2.3</span>
+                        <span><i class="legend-dot" style="background:#94a3b8;"></i>待补充</span>
+                    </div>
+                </div>
                 <div class="top-action-stack">
                     <button class="switch-city-btn" type="button" onclick="openCityModal()">切换城市</button>
                     <button class="profile-entry-btn" type="button" onclick="openProfilePanel()">个人中心</button>

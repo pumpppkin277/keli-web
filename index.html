@@ -214,9 +214,9 @@
             z-index: 2147483000;
             display: flex;
             align-items: flex-start;
-            justify-content: space-between;
+            justify-content: flex-end;
             gap: 12px;
-            pointer-events: auto;
+            pointer-events: none;
         }
 
         .map-control-shell {
@@ -1140,7 +1140,6 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title">选择城市</div>
-                <div class="modal-subtitle">首发城市已全部保留。没有真实数据的城市会展示地图和空状态，不影响用户继续切换。</div>
             </div>
             <div class="city-selection" id="citySelection">
                 <!-- 城市列表将从数据库动态加载 -->
@@ -1152,37 +1151,6 @@
     <div class="page map-page active" id="mapPage">
         <div class="map-container">
             <div class="map-top-bar">
-                <div class="map-control-shell">
-                    <div class="map-control-header">
-                        <div>
-                            <div class="current-city-label" id="currentCityLabel">选择城市</div>
-                            <div class="map-count-label" id="hotelCountLabel">选择城市后查看酒店安全数据</div>
-                        </div>
-                    </div>
-                    <div class="map-search-row">
-                        <input class="map-search-input" id="hotelSearchInput" type="search" placeholder="搜索酒店名或地址">
-                        <select class="map-sort-select" id="hotelSortSelect" aria-label="酒店排序">
-                            <option value="score-desc">安全评分从高到低</option>
-                            <option value="score-asc">安全评分从低到高</option>
-                            <option value="name-asc">酒店名称 A-Z</option>
-                            <option value="updated-desc">最近更新优先</option>
-                        </select>
-                    </div>
-                    <div class="filter-row" id="riskFilterRow">
-                        <button class="filter-chip" type="button" data-risk-filter="rated" data-filter-label="已初评" aria-pressed="false" onclick="handleRiskFilterButton(event, 'rated')">已初评</button>
-                        <button class="filter-chip active" type="button" data-risk-filter="all" data-filter-label="全部酒店" aria-pressed="true" onclick="handleRiskFilterButton(event, 'all')">全部酒店</button>
-                        <button class="filter-chip" type="button" data-risk-filter="safe" data-filter-label="相对较安全" aria-pressed="false" onclick="handleRiskFilterButton(event, 'safe')">相对较安全</button>
-                        <button class="filter-chip" type="button" data-risk-filter="attention" data-filter-label="需留意" aria-pressed="false" onclick="handleRiskFilterButton(event, 'attention')">需留意</button>
-                        <button class="filter-chip" type="button" data-risk-filter="risk" data-filter-label="高风险" aria-pressed="false" onclick="handleRiskFilterButton(event, 'risk')">高风险</button>
-                        <button class="filter-chip" type="button" data-risk-filter="unknown" data-filter-label="待补充" aria-pressed="false" onclick="handleRiskFilterButton(event, 'unknown')">待补充</button>
-                    </div>
-                    <div class="map-legend">
-                        <span><i class="legend-dot" style="background:#10b981;"></i>初评2.8+</span>
-                        <span><i class="legend-dot" style="background:#f59e0b;"></i>初评2.3-2.7</span>
-                        <span><i class="legend-dot" style="background:#ef4444;"></i>初评低于2.3</span>
-                        <span><i class="legend-dot" style="background:#94a3b8;"></i>待补充</span>
-                    </div>
-                </div>
                 <div class="top-action-stack">
                     <button class="switch-city-btn" type="button" onclick="openCityModal()">切换城市</button>
                     <button class="profile-entry-btn" type="button" onclick="openProfilePanel()">个人中心</button>
@@ -1805,7 +1773,8 @@
             
             currentCity = city;
             closeProfilePanel();
-            document.getElementById('hotelSearchInput').value = '';
+            const hotelSearchInput = document.getElementById('hotelSearchInput');
+            if (hotelSearchInput) hotelSearchInput.value = '';
             selectedRiskFilter = loadProfilePreference();
             updateRiskFilterChips();
             
@@ -1825,8 +1794,10 @@
         async function initMap(city) {
             console.log('🗺️ 初始化地图，城市:', city.name);
             document.getElementById('mapEmptyState').classList.remove('active');
-            document.getElementById('currentCityLabel').textContent = city.name;
-            document.getElementById('hotelCountLabel').textContent = '正在加载酒店安全数据';
+            const currentCityLabel = document.getElementById('currentCityLabel');
+            const hotelCountLabel = document.getElementById('hotelCountLabel');
+            if (currentCityLabel) currentCityLabel.textContent = city.name;
+            if (hotelCountLabel) hotelCountLabel.textContent = '正在加载酒店安全数据';
             closeHotelDetail();
             setMapLoading(true, '腾讯地图加载中...');
 
@@ -2114,12 +2085,12 @@
             selectHotelOnMap(hotel, position, { zoom: 15, popupDelay: 80 });
         });
 
-        document.getElementById('hotelSearchInput').addEventListener('input', applyHotelFilters);
-        document.getElementById('hotelSortSelect').addEventListener('change', applyHotelFilters);
+        document.getElementById('hotelSearchInput')?.addEventListener('input', applyHotelFilters);
+        document.getElementById('hotelSortSelect')?.addEventListener('change', applyHotelFilters);
         document.addEventListener('click', handleRiskFilterByPoint, true);
         document.addEventListener('pointerup', handleRiskFilterByPoint, true);
 
-        document.getElementById('riskFilterRow').addEventListener('click', function(e) {
+        document.getElementById('riskFilterRow')?.addEventListener('click', function(e) {
             const chip = e.target.closest('.filter-chip');
             if (!chip) return;
             e.preventDefault();
@@ -2127,7 +2098,7 @@
             setRiskFilter(chip.getAttribute('data-risk-filter') || 'all');
         });
 
-        document.getElementById('riskFilterRow').addEventListener('keydown', function(e) {
+        document.getElementById('riskFilterRow')?.addEventListener('keydown', function(e) {
             if (e.key !== 'Enter' && e.key !== ' ') return;
             const chip = e.target.closest('.filter-chip');
             if (!chip) return;

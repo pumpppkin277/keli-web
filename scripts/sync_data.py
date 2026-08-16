@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 DETAIL_DIR = DATA_DIR / "details"
 CITY_CODES = ("310000", "520100", "532800")
+SYNC_DETAILS = os.getenv("KELI_SYNC_DETAILS", "1").strip().lower() not in {"0", "false", "no"}
 CITY_FALLBACK = {
     "310000": {"id": "310000", "city_code": "310000", "name": "上海", "country": "中国", "latitude": 31.2304, "longitude": 121.4737},
     "520100": {"id": "520100", "city_code": "520100", "name": "贵阳", "country": "中国", "latitude": 26.6477, "longitude": 106.6302},
@@ -75,14 +76,15 @@ def main() -> None:
             **status_counts,
         }
 
-    with ThreadPoolExecutor(max_workers=16) as executor:
-        futures = [executor.submit(sync_detail, hotel_id) for hotel_id in sorted(rated_ids)]
-        for future in as_completed(futures):
-            future.result()
+    if SYNC_DETAILS:
+        with ThreadPoolExecutor(max_workers=16) as executor:
+            futures = [executor.submit(sync_detail, hotel_id) for hotel_id in sorted(rated_ids)]
+            for future in as_completed(futures):
+                future.result()
 
-    for existing in DETAIL_DIR.glob("*.json"):
-        if int(existing.stem) not in rated_ids:
-            existing.unlink()
+        for existing in DETAIL_DIR.glob("*.json"):
+            if int(existing.stem) not in rated_ids:
+                existing.unlink()
 
     write_json(
         DATA_DIR / "snapshot.json",

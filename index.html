@@ -861,9 +861,11 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.34);
-            z-index: 2147483009;
+            z-index: 2147482999;
             justify-content: flex-end;
+            align-items: flex-start;
+            padding: 132px 16px 18px;
+            pointer-events: none;
         }
 
         .profile-overlay.active {
@@ -871,12 +873,22 @@
         }
 
         .profile-drawer {
-            width: min(460px, 100vw);
-            height: 100%;
-            background: #f8fafc;
-            box-shadow: -18px 0 60px rgba(15, 23, 42, 0.22);
+            width: min(430px, calc(100vw - 32px));
+            max-height: calc(100vh - 150px);
+            background: rgba(248, 250, 248, 0.97);
+            border: 1px solid rgba(220, 230, 223, 0.92);
+            border-radius: 24px;
+            box-shadow: 0 24px 70px rgba(15, 35, 30, 0.2);
             overflow-y: auto;
             padding: 22px;
+            pointer-events: auto;
+            animation: profileIn 0.24s ease-out;
+            backdrop-filter: blur(16px);
+        }
+
+        @keyframes profileIn {
+            from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .profile-top {
@@ -1081,12 +1093,13 @@
 
             .profile-overlay {
                 align-items: flex-end;
+                padding: 0;
             }
 
             .profile-drawer {
                 width: 100%;
-                height: 88vh;
-                border-radius: 8px 8px 0 0;
+                max-height: 76vh;
+                border-radius: 24px 24px 0 0;
                 padding: 18px;
             }
 
@@ -1156,8 +1169,8 @@
                         </select>
                     </div>
                     <div class="filter-row" id="riskFilterRow">
-                        <button class="filter-chip active" type="button" data-risk-filter="rated" data-filter-label="已初评" aria-pressed="true" onclick="handleRiskFilterButton(event, 'rated')">已初评</button>
-                        <button class="filter-chip" type="button" data-risk-filter="all" data-filter-label="全部酒店" aria-pressed="false" onclick="handleRiskFilterButton(event, 'all')">全部酒店</button>
+                        <button class="filter-chip" type="button" data-risk-filter="rated" data-filter-label="已初评" aria-pressed="false" onclick="handleRiskFilterButton(event, 'rated')">已初评</button>
+                        <button class="filter-chip active" type="button" data-risk-filter="all" data-filter-label="全部酒店" aria-pressed="true" onclick="handleRiskFilterButton(event, 'all')">全部酒店</button>
                         <button class="filter-chip" type="button" data-risk-filter="safe" data-filter-label="相对较安全" aria-pressed="false" onclick="handleRiskFilterButton(event, 'safe')">相对较安全</button>
                         <button class="filter-chip" type="button" data-risk-filter="attention" data-filter-label="需留意" aria-pressed="false" onclick="handleRiskFilterButton(event, 'attention')">需留意</button>
                         <button class="filter-chip" type="button" data-risk-filter="risk" data-filter-label="高风险" aria-pressed="false" onclick="handleRiskFilterButton(event, 'risk')">高风险</button>
@@ -1182,7 +1195,7 @@
             <div class="hotel-list-panel" id="hotelListPanel">
                 <div class="hotel-list-header">
                     <span id="hotelListTitle">酒店安全数据</span>
-                    <span class="hotel-list-subtitle">点击卡片定位</span>
+                    <span class="hotel-list-subtitle" id="hotelListSubtitle">点击卡片定位</span>
                 </div>
                 <div class="hotel-card-row" id="hotelCardRow"></div>
             </div>
@@ -1208,7 +1221,7 @@
 
     <!-- Web 个人中心抽屉 -->
     <div class="profile-overlay" id="profileOverlay">
-        <div class="profile-drawer" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <div class="profile-drawer" role="dialog" aria-modal="false" aria-labelledby="profileTitle">
             <div class="profile-top">
                 <div>
                     <div class="profile-kicker">壳里账户</div>
@@ -1303,12 +1316,25 @@
         }
 
         function loadProfilePreference() {
-            return localStorage.getItem('keli_default_filter') || 'rated';
+            try {
+                const saved = localStorage.getItem('keli_default_filter');
+                const migrated = localStorage.getItem('keli_filter_preference_v2');
+                if (!migrated) {
+                    localStorage.setItem('keli_filter_preference_v2', '1');
+                    if (!saved || saved === 'rated') {
+                        localStorage.setItem('keli_default_filter', 'all');
+                        return 'all';
+                    }
+                }
+                return ['rated', 'all', 'safe', 'attention', 'risk', 'unknown'].includes(saved) ? saved : 'all';
+            } catch (error) {
+                return 'all';
+            }
         }
 
         function saveProfilePreference(value) {
-            localStorage.setItem('keli_default_filter', value || 'rated');
-            setRiskFilter(value || 'rated');
+            localStorage.setItem('keli_default_filter', value || 'all');
+            setRiskFilter(value || 'all');
             renderProfilePanel();
         }
 
@@ -1471,7 +1497,7 @@
         }
 
         function setRiskFilter(filterValue) {
-            selectedRiskFilter = filterValue || 'rated';
+            selectedRiskFilter = filterValue || 'all';
             activeHotelId = null;
             suppressAutoFit = false;
             updateRiskFilterChips();
@@ -1751,6 +1777,7 @@
 
         // 打开城市选择模态框
         function openCityModal() {
+            closeProfilePanel();
             document.getElementById('cityModal').classList.add('active');
         }
 
@@ -1777,6 +1804,7 @@
             console.log('========================================');
             
             currentCity = city;
+            closeProfilePanel();
             document.getElementById('hotelSearchInput').value = '';
             selectedRiskFilter = loadProfilePreference();
             updateRiskFilterChips();
@@ -2023,6 +2051,7 @@
         function renderHotelList(hotels) {
             const panel = document.getElementById('hotelListPanel');
             const title = document.getElementById('hotelListTitle');
+            const subtitle = document.getElementById('hotelListSubtitle');
             const row = document.getElementById('hotelCardRow');
             const validHotels = (hotels || []).filter(hotel => hotel.latitude && hotel.longitude);
 
@@ -2032,8 +2061,15 @@
                 return;
             }
 
+            const cardLimit = 160;
+            const visibleHotels = validHotels.slice(0, cardLimit);
             title.textContent = `${currentCity?.name || '当前城市'} · ${validHotels.length} 家酒店`;
-            row.innerHTML = validHotels.map(hotel => {
+            if (subtitle) {
+                subtitle.textContent = validHotels.length > cardLimit
+                    ? `地图已显示全部 · 卡片展示前 ${cardLimit} 家`
+                    : '点击卡片定位';
+            }
+            row.innerHTML = visibleHotels.map(hotel => {
                 const bucket = scoreBucket(hotel);
                 const scoreText = bucket === 'unknown' ? '待补充' : `${formatScore(hotel.safety_score)} 分`;
                 const riskLabel = displayRiskLabel(hotel);
@@ -2349,6 +2385,7 @@
         }
 
         function openProfilePanel() {
+            document.getElementById('cityModal')?.classList.remove('active');
             renderProfilePanel();
             document.getElementById('profileOverlay')?.classList.add('active');
         }

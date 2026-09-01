@@ -32,7 +32,7 @@ jobs:
             --retry-all-errors \
             --connect-timeout 15 \
             --max-time 300 \
-            http://139.224.105.7/keli-data/snapshot.tar.gz \
+            https://keli1.oss-cn-beijing.aliyuncs.com/keli-sync/snapshot.tar.gz \
             --output snapshot.tar.gz
 
       - name: Verify and stage the snapshot

@@ -22,19 +22,40 @@ jobs:
         with:
           ref: github-pages
 
-      - name: Build the snapshot from the public API
+      - name: Download the server-built snapshot
         run: |
-          mkdir incoming
-          rsync -a data/ incoming/data/
-          KELI_API_BASE=http://139.224.105.7 \
-          KELI_OUTPUT_ROOT=incoming \
-          KELI_SYNC_DETAILS=1 \
-          KELI_INCREMENTAL_DETAILS=1 \
-          KELI_SYNC_WORKERS=8 \
-          python3 scripts/sync_data.py
+          curl \
+            --fail \
+            --show-error \
+            --location \
+            --retry 5 \
+            --retry-all-errors \
+            --connect-timeout 15 \
+            --max-time 300 \
+            http://139.224.105.7/keli-data/snapshot.tar.gz \
+            --output snapshot.tar.gz
 
       - name: Verify and stage the snapshot
         run: |
+          python3 - <<'PY'
+          import pathlib
+          import tarfile
+
+          archive = pathlib.Path("snapshot.tar.gz")
+          destination = pathlib.Path("incoming")
+          destination.mkdir()
+          with tarfile.open(archive, "r:gz") as bundle:
+              members = bundle.getmembers()
+              if not members:
+                  raise SystemExit("snapshot archive is empty")
+              for member in members:
+                  path = pathlib.PurePosixPath(member.name)
+                  if path.is_absolute() or ".." in path.parts or not path.parts or path.parts[0] != "data":
+                      raise SystemExit(f"unsafe snapshot path: {member.name}")
+                  if member.issym() or member.islnk():
+                      raise SystemExit(f"snapshot links are not allowed: {member.name}")
+              bundle.extractall(destination, filter="data")
+          PY
           python3 scripts/validate_snapshot.py incoming --previous-root .
           rsync -a --delete incoming/data/ data/
 

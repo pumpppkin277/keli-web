@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from pathlib import Path
 CITY_CODES = ("310000", "520100", "532800")
 MINIMUM_COUNTS = {"310000": 2000, "520100": 800, "532800": 200}
 STATUS_NAMES = ("environment_scored", "deep_audited", "evidence_insufficient", "pending")
+MAX_AGE_SECONDS = max(3600, int(os.getenv("KELI_MAX_SNAPSHOT_AGE_SECONDS", "21600")))
 
 
 def read_json(path: Path) -> object:
@@ -59,7 +61,7 @@ def main() -> None:
     if generated_at.tzinfo is None:
         fail("generated_at must include a timezone")
     age_seconds = (datetime.now(timezone.utc) - generated_at.astimezone(timezone.utc)).total_seconds()
-    if age_seconds < -300 or age_seconds > 3600:
+    if age_seconds < -300 or age_seconds > MAX_AGE_SECONDS:
         fail(f"generated_at is not recent (age={age_seconds:.0f}s)")
 
     all_ids: set[int] = set()

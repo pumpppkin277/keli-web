@@ -18,52 +18,21 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out the published site
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: github-pages
 
-      - name: Configure the restricted data connection
-        env:
-          KELI_EXPORT_SSH_KEY: ${{ secrets.KELI_EXPORT_SSH_KEY }}
+      - name: Build the snapshot from the public API
         run: |
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "$KELI_EXPORT_SSH_KEY" > ~/.ssh/keli_export_ed25519
-          chmod 600 ~/.ssh/keli_export_ed25519
-          printf '%s\n' '139.224.105.7 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMvMmcg2ZYMjqkNAywFgrZIpiO+gdTq1i4NyWGaq7U7E' > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-      - name: Download the validated snapshot
-        run: |
-          ssh \
-            -i ~/.ssh/keli_export_ed25519 \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o ConnectTimeout=15 \
-            -o StrictHostKeyChecking=yes \
-            keli-export@139.224.105.7 export \
-            > snapshot.tar.gz
+          mkdir incoming
+          KELI_API_BASE=http://139.224.105.7 \
+          KELI_OUTPUT_ROOT=incoming \
+          KELI_SYNC_DETAILS=1 \
+          KELI_SYNC_WORKERS=8 \
+          python3 scripts/sync_data.py
 
       - name: Verify and stage the snapshot
         run: |
-          python3 - <<'PY'
-          import pathlib
-          import tarfile
-
-          archive = pathlib.Path("snapshot.tar.gz")
-          destination = pathlib.Path("incoming")
-          destination.mkdir()
-          with tarfile.open(archive, "r:gz") as bundle:
-              members = bundle.getmembers()
-              if not members:
-                  raise SystemExit("snapshot archive is empty")
-              for member in members:
-                  path = pathlib.PurePosixPath(member.name)
-                  if path.is_absolute() or ".." in path.parts or not path.parts or path.parts[0] != "data":
-                      raise SystemExit(f"unsafe snapshot path: {member.name}")
-                  if member.issym() or member.islnk():
-                      raise SystemExit(f"snapshot links are not allowed: {member.name}")
-              bundle.extractall(destination, filter="data")
-          PY
           python3 scripts/validate_snapshot.py incoming --previous-root .
           rsync -a --delete incoming/data/ data/
 

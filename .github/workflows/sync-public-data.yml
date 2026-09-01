@@ -25,9 +25,11 @@ jobs:
       - name: Build the snapshot from the public API
         run: |
           mkdir incoming
+          rsync -a data/ incoming/data/
           KELI_API_BASE=http://139.224.105.7 \
           KELI_OUTPUT_ROOT=incoming \
           KELI_SYNC_DETAILS=1 \
+          KELI_INCREMENTAL_DETAILS=1 \
           KELI_SYNC_WORKERS=8 \
           python3 scripts/sync_data.py
 

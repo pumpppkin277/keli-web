@@ -19,6 +19,7 @@ DATA_DIR = ROOT / "data"
 DETAIL_DIR = DATA_DIR / "details"
 CITY_CODES = ("310000", "520100", "532800")
 SYNC_DETAILS = os.getenv("KELI_SYNC_DETAILS", "1").strip().lower() not in {"0", "false", "no"}
+INCREMENTAL_DETAILS = os.getenv("KELI_INCREMENTAL_DETAILS", "1").strip().lower() not in {"0", "false", "no"}
 SYNC_WORKERS = max(1, int(os.getenv("KELI_SYNC_WORKERS", "8")))
 FETCH_ATTEMPTS = max(1, int(os.getenv("KELI_FETCH_ATTEMPTS", "4")))
 CITY_FALLBACK = {
@@ -57,6 +58,17 @@ def sync_detail(hotel_id: int) -> int:
     return hotel_id
 
 
+def detail_is_current(hotel: dict[str, object]) -> bool:
+    path = DETAIL_DIR / f"{int(hotel['id'])}.json"
+    try:
+        with path.open(encoding="utf-8") as handle:
+            detail = json.load(handle)
+        detail_hotel = detail.get("hotel", {})
+        return detail_hotel.get("updated_at") == hotel.get("updated_at")
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     DETAIL_DIR.mkdir(parents=True, exist_ok=True)
@@ -67,6 +79,7 @@ def main() -> None:
     write_json(DATA_DIR / "cities.json", cities)
 
     rated_ids: set[int] = set()
+    rated_hotels: dict[int, dict[str, object]] = {}
     counts: dict[str, dict[str, int]] = {}
     for city_code in CITY_CODES:
         hotels = fetch_json(f"/api/hotels?city_code={city_code}&limit=5000")
@@ -75,6 +88,7 @@ def main() -> None:
         write_json(DATA_DIR / f"hotels-{city_code}.json", hotels)
         city_rated_ids = {int(hotel["id"]) for hotel in hotels if hotel.get("safety_score") is not None}
         rated_ids.update(city_rated_ids)
+        rated_hotels.update({int(hotel["id"]): hotel for hotel in hotels if hotel.get("safety_score") is not None})
         status_counts = {
             "environment_scored": 0,
             "deep_audited": 0,
@@ -91,14 +105,20 @@ def main() -> None:
         }
 
     if SYNC_DETAILS:
+        details_to_sync = [
+            hotel_id
+            for hotel_id in sorted(rated_ids)
+            if not INCREMENTAL_DETAILS or not detail_is_current(rated_hotels[hotel_id])
+        ]
         with ThreadPoolExecutor(max_workers=SYNC_WORKERS) as executor:
-            futures = [executor.submit(sync_detail, hotel_id) for hotel_id in sorted(rated_ids)]
+            futures = [executor.submit(sync_detail, hotel_id) for hotel_id in details_to_sync]
             for future in as_completed(futures):
                 future.result()
 
         for existing in DETAIL_DIR.glob("*.json"):
             if int(existing.stem) not in rated_ids:
                 existing.unlink()
+        print(f"detail sync: fetched={len(details_to_sync)} reused={len(rated_ids) - len(details_to_sync)}")
 
     write_json(
         DATA_DIR / "snapshot.json",
